@@ -1,0 +1,20 @@
+ngx_addon_name=ngx_http_sqlite_module
+
+HTTP_SQLITE_MODULE_SRCS=" \
+    $ngx_addon_dir/ngx_http_sqlite.c  \
+    $ngx_addon_dir/ngx_http_sqlite_module.c  \
+    "
+HTTP_SQLITE_MODULE_DEPS=" \
+    $ngx_addon_dir/ngx_http_sqlite.h  \
+    $ngx_addon_dir/ngx_http_sqlite_module.h  \
+    "
+
+HTTP_MODULES="$HTTP_MODULES ngx_http_sqlite_module"
+
+NGX_ADDON_SRCS="$NGX_ADDON_SRCS $HTTP_SQLITE_MODULE_SRCS"
+NGX_ADDON_DEPS="$NGX_ADDON_DEPS $HTTP_SQLITE_MODULE_DEPS"
+
+HTTP_INCS="$HTTP_INCS $RUN_INC"
+CORE_LIBS="$CORE_LIBS -lsqlite3"
+
+have=T_SQLITE . auto/have
