@@ -24,9 +24,10 @@ typedef struct {
 } ngx_http_sqlite_main_conf_t;
 
 typedef struct {
-    ngx_flag_t                enable;
-    ngx_str_t                 query;
-    ngx_http_sqlite_result_t  result;
+    ngx_flag_t                          enable;
+    ngx_str_t                           query;
+    sqlite3                            *db;
+    ngx_http_sqlite_result_t            result;
 
 } ngx_http_sqlite_ctx_t;
 
