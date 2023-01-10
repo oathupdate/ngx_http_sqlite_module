@@ -8,7 +8,7 @@ class NgxConf():
     def __init__(self):
         self.global_conf = {
                 '01_user': 'root',
-                '02_worker_processes': '1',
+                '02_worker_processes': '2',
                 '03_events': '{ worker_connections  1024; }'
                 }
         self.http_conf = {
@@ -17,7 +17,7 @@ class NgxConf():
             '03_sqlite': 'on',
             '04_sqlite_database': path.DB_FILE,
             '05_sqlite_init': '"drop table if exists test;"',
-            '06_sqlite_init': '"create table if not exists test (col1 INTEGER PRIMARY KEY NOT NULL,col2 TEXT NOT NULL);"',
+            '06_sqlite_init': '"create table if not exists test (col1 BIGINT PRIMARY KEY NOT NULL,col2 TEXT NOT NULL);"',
             '07_sqlite_init': '"insert into test (\'col1\', \'col2\') values (\'1\', \'col_0\');"'
         }
 
@@ -26,7 +26,7 @@ class NgxConf():
             '02_server_name': 'localhost default',
         }
         self.local_conf = {
-            '01_/test_api': 'sqlite_exec',
+            '01_/test_arg': 'sqlite_exec',
             '02_/test_ngx_var': "content_by_lua_file " + path.NGX_LUA_FILE
         }
 
@@ -98,6 +98,7 @@ class Nginx():
                 print('nginx reload failed')
         else:
             print('nginx is not running')
+        time.sleep(0.5)
        
     def restart(self):
         self.stop()

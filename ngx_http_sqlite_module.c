@@ -373,6 +373,8 @@ ngx_http_sqlite_init_worker(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+    sqlite3_busy_timeout(smcf->db, 100);
+
     return NGX_OK;
 }
 

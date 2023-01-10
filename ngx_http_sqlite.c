@@ -163,10 +163,11 @@ ngx_http_sqlite_exec(sqlite3 *db, ngx_str_t *sql_str,
     }
     if (sql_str->len > sizeof(sql)) {
         ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
-                      "ngx_http_sqlite_exec sql too long");
+                      "ngx_http_sqlite_exec sql too long: %v", sql_str);
         return NGX_ERROR;
     }
 
+    ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0, "sql_exec: %v", sql_str);
     ngx_sprintf(sql, "%v", sql_str)[0] = '\0';
     if (sqlite3_exec(db, (char*)sql, ngx_http_sqlite_exec_cb, res, &error) !=
         SQLITE_OK) {
