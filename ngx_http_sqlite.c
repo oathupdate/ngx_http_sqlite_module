@@ -156,19 +156,24 @@ ngx_http_sqlite_exec(sqlite3 *db, ngx_str_t *sql_str,
     ngx_http_sqlite_result_t *res)
 {
     char *error = NULL;
-    u_char sql[2048];
+    u_char sql[2048], *psql;
     if (res) {
         ngx_http_sqlite_result_reset(res);
         res->status = EXEC_FAILED;
     }
-    if (sql_str->len > sizeof(sql)) {
-        ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
-                      "ngx_http_sqlite_exec sql too long: %v", sql_str);
-        return NGX_ERROR;
+    if (sql_str->len + 1 > sizeof(sql)) {
+        psql = ngx_pnalloc(res->pool, sql_str->len + 1);
+        if (!psql) {
+            return NGX_ERROR;
+        }
+
+    } else {
+        psql = sql;
     }
 
     ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0, "sql_exec: %v", sql_str);
-    ngx_sprintf(sql, "%v", sql_str)[0] = '\0';
+
+    ngx_sprintf(psql, "%v", sql_str)[0] = '\0';
     if (sqlite3_exec(db, (char*)sql, ngx_http_sqlite_exec_cb, res, &error) !=
         SQLITE_OK) {
         ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
