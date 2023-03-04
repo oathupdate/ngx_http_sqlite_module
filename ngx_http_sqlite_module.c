@@ -450,13 +450,13 @@ ngx_http_sqlite_exec_handler(ngx_http_request_t *r)
     if (!ctx || !ctx->enable) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "run exec handler but module not enable");
-        return NGX_ERROR;
+        return NGX_HTTP_BAD_REQUEST;
     }
 
     if (NGX_OK == ngx_http_arg(r, arg_key.data, arg_key.len, &sql)) {
         ctx->query.data = ngx_palloc(r->pool, sql.len);
         if (!ctx->query.data) {
-            return NGX_ERROR;
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         dst = ctx->query.data;
         src = sql.data;

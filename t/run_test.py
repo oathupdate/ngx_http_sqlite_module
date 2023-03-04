@@ -25,3 +25,4 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner()
     runner.run(discover)
     ngx.stop()
+    os.system('rm -f *.pyc')
