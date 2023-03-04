@@ -10,6 +10,7 @@
 enum {
     EXEC_UNDEFINED,
     EXEC_FAILED,
+    EXEC_FORBIDDEN,
     EXEC_SUCCESS
 };
 
@@ -29,6 +30,8 @@ typedef struct {
     ngx_pool_t          *pool;
 
 } ngx_http_sqlite_result_t;
+
+ngx_flag_t ngx_http_sqlite_safty_check(ngx_array_t *black_list, ngx_str_t *sql);
 
 ngx_int_t ngx_http_sqlite_result_reset(ngx_http_sqlite_result_t *res);
 

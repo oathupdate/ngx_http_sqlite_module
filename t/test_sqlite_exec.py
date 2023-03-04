@@ -46,3 +46,25 @@ class TestSqliteExec(unittest.TestCase):
         self.assertEqual(len(content['rows']), 1)
         self.assertEqual(content['rows'][0][0], str(self.index))
         self.assertEqual(content['rows'][0][1], str('test_exec_by_ngx_var'))
+
+    def test_exec_filter(self):
+        content = '''
+            ngx.var.sqlite_query = "drop table test;"
+            ngx.say(tostring(ngx.var.sqlite_result))
+            '''
+
+        lua = open(path.NGX_LUA_FILE, 'w')
+        lua.write(content)
+        lua.close()
+        ngx.reload()
+        content = requests.get(path.HOST + '/test_ngx_var').json()
+        self.assertEqual(content['status'], 'forbidden')
+
+        sql = "CREATE table test1 (col1 text);" 
+        content = requests.get(path.HOST + '/test_arg?sql=' + sql).json()
+        self.assertEqual(content['status'], 'forbidden')
+
+        content = requests.post(path.HOST + '/test_arg', data = sql).json()
+        self.assertEqual(content['status'], 'forbidden')
+
+ 

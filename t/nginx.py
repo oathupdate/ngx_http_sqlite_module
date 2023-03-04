@@ -9,7 +9,8 @@ class NgxConf():
         self.global_conf = {
                 '01_user': 'root',
                 '02_worker_processes': '2',
-                '03_events': '{ worker_connections  1024; }'
+                '03_events': '{ worker_connections  1024; }',
+                '04_error_log': 'logs/error.log  warn'
                 }
         self.http_conf = {
             '01_lua_package_path': '"' + path.NGX_LUA_PATH + '?.lua;;"',
@@ -18,7 +19,9 @@ class NgxConf():
             '04_sqlite_database': path.DB_FILE,
             '05_sqlite_init': '"drop table if exists test;"',
             '06_sqlite_init': '"create table if not exists test (col1 BIGINT PRIMARY KEY NOT NULL,col2 TEXT NOT NULL);"',
-            '07_sqlite_init': '"insert into test (\'col1\', \'col2\') values (\'1\', \'col_0\');"'
+            '07_sqlite_init': '"insert into test (\'col1\', \'col2\') values (\'1\', \'col_0\');"',
+            '08_sqlite_filter': 'create',
+            '09_sqlite_filter': 'drop'
         }
 
         self.server_conf = {

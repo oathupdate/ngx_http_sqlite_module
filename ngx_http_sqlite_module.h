@@ -9,6 +9,8 @@
 
 typedef struct {
     ngx_flag_t                         enable;
+    /* filter some unsafty keys like create/insert */
+    ngx_array_t                        *filter_keys;
 
 } ngx_http_sqlite_loc_conf_t;
 
@@ -26,7 +28,7 @@ typedef struct {
 typedef struct {
     ngx_flag_t                          enable;
     ngx_str_t                           query;
-    sqlite3                            *db;
+    sqlite3                             *db;
     ngx_http_sqlite_result_t            result;
 
 } ngx_http_sqlite_ctx_t;

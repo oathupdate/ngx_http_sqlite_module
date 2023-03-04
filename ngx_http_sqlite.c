@@ -1,5 +1,24 @@
 #include "ngx_http_sqlite_module.h"
 
+ngx_flag_t
+ngx_http_sqlite_safty_check(ngx_array_t *black_list, ngx_str_t *sql)
+{
+    ngx_str_t               *key;
+    ngx_uint_t              i;
+
+    key = black_list->elts;
+    for (i = 0; i < black_list->nelts; i++) {
+        if (sql->len < key[i].len) {
+            continue;
+        }
+        if (ngx_strcasestrn(sql->data, (char*)key[i].data, key[i].len - 1)) {
+            ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
+                          "sql hit blacklist: %V", sql);
+            return 0;
+        }
+    }
+    return 1;
+}
 
 /*{
   "count": 0,
@@ -15,14 +34,23 @@ ngx_http_sqlite_result_serialize(ngx_http_sqlite_result_t *res)
     ngx_str_t               *val;
     ngx_array_t             *row;
     static const ngx_str_t  err = ngx_string("{\"status\":\"failed\"}"),
-                            undef = ngx_string("{\"status\":\"uninitialized\"}");
-
-    if (res->status != EXEC_SUCCESS) {
-        dst->pos = res->status == EXEC_UNDEFINED ? undef.data : err.data;
-        size = res->status == EXEC_UNDEFINED ? undef.len : err.len;
-        dst->last = dst->pos + size;
+                            undef = ngx_string("{\"status\":\"uninitialized\"}"),
+                            forrbid = ngx_string("{\"status\":\"forbidden\"}");
+    switch (res->status) {
+    case EXEC_UNDEFINED:
+        dst->pos = undef.data;
+        dst->last = dst->pos + undef.len;
+        return NGX_OK;
+    case EXEC_FAILED:
+        dst->pos = err.data;
+        dst->last = dst->pos + err.len;
+        return NGX_OK;
+    case EXEC_FORBIDDEN:
+        dst->pos = forrbid.data;
+        dst->last = dst->pos + forrbid.len;
         return NGX_OK;
     }
+
     /* start calculate buf size */
     size += sizeof("{\"status\":\"success\",\"count\": ,}") + NGX_INT_T_LEN;
     size += sizeof("\"col_names\":[],");

@@ -64,8 +64,16 @@ static ngx_command_t  ngx_http_sqlite_commands[] = {
     { ngx_string("sqlite_exec"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS,
       ngx_http_sqlite_exec_slot,
-      NGX_HTTP_MAIN_CONF_OFFSET,
-      offsetof(ngx_http_sqlite_main_conf_t, init_sqls),
+      0,
+      0,
+      NULL
+    },
+
+    { ngx_string("sqlite_filter"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_array_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_sqlite_loc_conf_t, filter_keys),
       NULL
     },
 
@@ -154,7 +162,8 @@ static void
 ngx_http_sqlite_query_set(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
-    ngx_http_sqlite_ctx_t        *ctx;
+    ngx_http_sqlite_ctx_t         *ctx;
+    ngx_http_sqlite_loc_conf_t    *sloc;
 
     ctx = ngx_http_sqlite_get_ctx(r);
     if (!ctx || !ctx->enable) {
@@ -164,6 +173,11 @@ ngx_http_sqlite_query_set(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ctx->query.data = v->data;
     ctx->query.len = v->len;
 
+    sloc = ngx_http_get_module_loc_conf(r, ngx_http_sqlite_module);
+    if (!ngx_http_sqlite_safty_check(sloc->filter_keys, &ctx->query)) {
+        ctx->result.status = EXEC_FORBIDDEN;
+        return;
+    }
     ngx_http_sqlite_exec(ctx->db, &ctx->query, &ctx->result);
 }
 
@@ -222,15 +236,7 @@ ngx_http_sqlite_create_main_conf(ngx_conf_t *cf)
     if (!smcf) {
         return NULL;
     }
-    smcf->init_sqls = ngx_pcalloc(cf->pool, sizeof(ngx_array_t));
-    if (!smcf->init_sqls) {
-        return NULL;
-    }
-    if (ngx_array_init(smcf->init_sqls, cf->pool, 1, sizeof(ngx_str_t)) !=
-        NGX_OK) {
-        return NULL;
-    }
-
+    smcf->init_sqls = NGX_CONF_UNSET_PTR;
     smcf->enable = NGX_CONF_UNSET;
     return smcf;
 }
@@ -257,6 +263,11 @@ ngx_http_sqlite_create_loc_conf(ngx_conf_t *cf)
     ngx_http_sqlite_loc_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_sqlite_loc_conf_t));
+    if (!conf) {
+        return NULL;
+    }
+
+    conf->filter_keys = NGX_CONF_UNSET_PTR;
     conf->enable = NGX_CONF_UNSET;
 
     return conf;
@@ -272,6 +283,7 @@ ngx_http_sqlite_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     smcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_sqlite_module);
 
     ngx_conf_merge_value(conf->enable, prev->enable, 1);
+    ngx_conf_merge_ptr_value(conf->filter_keys, prev->filter_keys, NULL);
     if (conf->enable) {
         smcf->enable = 1;
     }
@@ -424,6 +436,7 @@ ngx_http_sqlite_body_post_read(ngx_http_request_t *r)
 {
     ngx_buf_t                    *body;
     ngx_http_sqlite_ctx_t        *ctx;
+    ngx_http_sqlite_loc_conf_t   *sloc;
 
     body = ngx_http_sqlite_read_body(r);
     if (!body) {
@@ -432,6 +445,13 @@ ngx_http_sqlite_body_post_read(ngx_http_request_t *r)
     ctx = ngx_http_sqlite_get_ctx(r);
     ctx->query.data = body->pos;
     ctx->query.len = body->last - body->pos;
+
+    sloc = ngx_http_get_module_loc_conf(r, ngx_http_sqlite_module);
+    if (!ngx_http_sqlite_safty_check(sloc->filter_keys, &ctx->query)) {
+        ctx->result.status = EXEC_FORBIDDEN;
+        goto end;
+    }
+
     ngx_http_sqlite_exec(ctx->db, &ctx->query, &ctx->result);
 
 end:
@@ -445,6 +465,7 @@ ngx_http_sqlite_exec_handler(ngx_http_request_t *r)
     ngx_int_t                     rc;
     ngx_str_t                     arg_key = ngx_string("sql"), sql;
     ngx_http_sqlite_ctx_t        *ctx;
+    ngx_http_sqlite_loc_conf_t   *sloc;
 
     ctx = ngx_http_sqlite_get_ctx(r);
     if (!ctx || !ctx->enable) {
@@ -462,6 +483,11 @@ ngx_http_sqlite_exec_handler(ngx_http_request_t *r)
         src = sql.data;
         ngx_unescape_uri(&dst, &src, sql.len, 0);
         ctx->query.len = dst - ctx->query.data;
+        sloc = ngx_http_get_module_loc_conf(r, ngx_http_sqlite_module);
+        if (!ngx_http_sqlite_safty_check(sloc->filter_keys, &ctx->query)) {
+            ctx->result.status = EXEC_FORBIDDEN;
+            return ngx_http_sqlite_send_response(r);
+        }
         ngx_http_sqlite_exec(ctx->db, &ctx->query, &ctx->result);
         return ngx_http_sqlite_send_response(r);
     }
