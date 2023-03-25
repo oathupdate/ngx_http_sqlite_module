@@ -38,6 +38,8 @@ Configuration
     sqlite_database /root/nginx/database/test.db;  # sqlite database path
     sqlite_init "create table if not exists test (col1 BIGINT PRIMARY KEY NOT NULL,col2 TEXT NOT NULL);";   # exe some sqls before nginx worker started
     sqlite_init "insert into test ('col1', 'col2') values ('1', 'col_0');";         # exe some sqls before nginx worker started
+    sqlite_filter "create";  # if 'create' is a substr of sql, then will not exec this sql
+    sqlite_filter "drop";
 ```
 
 ## location block
@@ -47,6 +49,7 @@ location /test {
       # description:  execute sql which affixed in http uri arg(url?sql=select * from test) or the whole http body
       # http response: this command will response the sql exe result.
        sqlite_exec;
+      sqlite_filter "create";  # if 'create' is a substr of sql, then will not exec this sql
 }
 ```
 
