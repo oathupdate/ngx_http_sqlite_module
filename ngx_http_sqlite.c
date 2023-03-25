@@ -1,5 +1,68 @@
 #include "ngx_http_sqlite_module.h"
 
+ngx_flag_t
+ngx_http_sqlite_safty_check(ngx_array_t *black_list, ngx_str_t *sql)
+{
+    ngx_str_t               *key;
+    ngx_uint_t              i;
+
+    if (!black_list) {
+        return 1;
+    }
+
+    key = black_list->elts;
+    for (i = 0; i < black_list->nelts; i++) {
+        if (sql->len < key[i].len) {
+            continue;
+        }
+        if (ngx_strcasestrn(sql->data, (char*)key[i].data, key[i].len - 1)) {
+            ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
+                          "sql hit blacklist: %V", sql);
+            return 0;
+        }
+    }
+    return 1;
+}
+
+ngx_uint_t ngx_http_get_escapeing_char_count(ngx_str_t *str)
+{
+    ngx_uint_t  i = str->len, count = 0;
+    while (i--) {
+        if (str->data[i] == '"') {
+            count++;
+        }
+    }
+    return count;
+}
+
+ngx_int_t
+ngx_http_str_escaping(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
+{
+    ngx_uint_t    count, i;
+    u_char        *p;
+
+    count = ngx_http_get_escapeing_char_count(src);
+    if (count == 0) {
+        dst->len = src->len;
+        dst->data = src->data;
+        return NGX_OK;
+    }
+    p = ngx_palloc(pool, src->len + count);
+    if (!p) {
+        return NGX_ERROR;
+    }
+    dst->data = p;
+    dst->len = src->len + count;
+    for (i = 0; i < src->len; i++) {
+        if (src->data[i] != '"') {
+            *p++ = src->data[i];
+            continue;
+        }
+        *p++ = '\\';
+        *p++ = '"';
+    }
+    return NGX_OK;
+}
 
 /*{
   "count": 0,
@@ -12,17 +75,26 @@ ngx_http_sqlite_result_serialize(ngx_http_sqlite_result_t *res)
 {
     ngx_buf_t               *dst = &res->serialize_buf;
     ngx_uint_t              size = 0, i, j;
-    ngx_str_t               *val;
+    ngx_str_t               *val, escaping_str;
     ngx_array_t             *row;
     static const ngx_str_t  err = ngx_string("{\"status\":\"failed\"}"),
-                            undef = ngx_string("{\"status\":\"uninitialized\"}");
-
-    if (res->status != EXEC_SUCCESS) {
-        dst->pos = res->status == EXEC_UNDEFINED ? undef.data : err.data;
-        size = res->status == EXEC_UNDEFINED ? undef.len : err.len;
-        dst->last = dst->pos + size;
+                            undef = ngx_string("{\"status\":\"uninitialized\"}"),
+                            forrbid = ngx_string("{\"status\":\"forbidden\"}");
+    switch (res->status) {
+    case EXEC_UNDEFINED:
+        dst->pos = undef.data;
+        dst->last = dst->pos + undef.len;
+        return NGX_OK;
+    case EXEC_FAILED:
+        dst->pos = err.data;
+        dst->last = dst->pos + err.len;
+        return NGX_OK;
+    case EXEC_FORBIDDEN:
+        dst->pos = forrbid.data;
+        dst->last = dst->pos + forrbid.len;
         return NGX_OK;
     }
+
     /* start calculate buf size */
     size += sizeof("{\"status\":\"success\",\"count\": ,}") + NGX_INT_T_LEN;
     size += sizeof("\"col_names\":[],");
@@ -36,6 +108,7 @@ ngx_http_sqlite_result_serialize(ngx_http_sqlite_result_t *res)
         val = row[i].elts;
         for (j = 0; j < row[i].nelts; j++) {
             size += val[j].len + sizeof("\"\",");
+            size += ngx_http_get_escapeing_char_count(&val[j]);
         }
         size += sizeof("[],");
     }
@@ -50,7 +123,7 @@ ngx_http_sqlite_result_serialize(ngx_http_sqlite_result_t *res)
     } else {
         dst->last = dst->pos = dst->start;
     }
-    
+
     /* start generate json format output */
     dst->last = ngx_sprintf(dst->last, "{\"status\":\"success\",\"count\":%d,",
                             res->row_count);
@@ -68,11 +141,17 @@ ngx_http_sqlite_result_serialize(ngx_http_sqlite_result_t *res)
         val = row[i].elts;
         dst->last = ngx_sprintf(dst->last, "[");
         for (j = 0; j < row[i].nelts; j++) {
-            dst->last = ngx_sprintf(dst->last, "\"%v\",", &val[j]);
+            if (NGX_OK != ngx_http_str_escaping(res->pool,
+                                                &val[j], &escaping_str)) {
+                return NGX_ERROR;
+            }
+
+            dst->last = ngx_sprintf(dst->last, "\"%v\",", &escaping_str);
             if (j == row[i].nelts - 1) {
                 dst->last--;
             }
         }
+
         dst->last = ngx_sprintf(dst->last, "],");
         if (i == res->rows.nelts - 1) {
             dst->last--;
