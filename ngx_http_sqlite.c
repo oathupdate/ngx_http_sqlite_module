@@ -43,7 +43,7 @@ ngx_http_str_escaping(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
 
     count = ngx_http_get_escapeing_char_count(src);
     if (count == 0) {
-        st->len = src->len;
+        dst->len = src->len;
         dst->data = src->data;
         return NGX_OK;
     }
@@ -63,8 +63,6 @@ ngx_http_str_escaping(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
     }
     return NGX_OK;
 }
-=======
->>>>>>> 835716c55cd6d6ab8503dba184f57bb3dcc6c84b
 
 /*{
   "count": 0,
