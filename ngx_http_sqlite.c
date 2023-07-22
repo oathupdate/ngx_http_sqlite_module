@@ -43,7 +43,7 @@ ngx_http_str_escaping(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
 
     count = ngx_http_get_escapeing_char_count(src);
     if (count == 0) {
-        st->len = src->len;
+        dst->len = src->len;
         dst->data = src->data;
         return NGX_OK;
     }
@@ -63,8 +63,6 @@ ngx_http_str_escaping(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
     }
     return NGX_OK;
 }
-=======
->>>>>>> 835716c55cd6d6ab8503dba184f57bb3dcc6c84b
 
 /*{
   "count": 0,
@@ -255,10 +253,10 @@ ngx_http_sqlite_exec(sqlite3 *db, ngx_str_t *sql_str,
     ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0, "sql_exec: %v", sql_str);
 
     ngx_sprintf(psql, "%v", sql_str)[0] = '\0';
-    if (sqlite3_exec(db, (char*)sql, ngx_http_sqlite_exec_cb, res, &error) !=
+    if (sqlite3_exec(db, (char*)psql, ngx_http_sqlite_exec_cb, res, &error) !=
         SQLITE_OK) {
         ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
-                      "sqlite3_exec '%s' error: %s", sql, error);
+                      "sqlite3_exec '%s' error: %s", psql, error);
         sqlite3_free(error);
         return NGX_ERROR;
     }
