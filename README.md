@@ -59,7 +59,7 @@ How to get sql exec result
 when a sql has been executed, you can get the result via the bellow towo ways.
 
 1. if the location configed command `sqlite_exec` then you can get result by http response
-2. if you set the `ngx.var.sqlite_query` by nginx conf or lua script htne you can get result via `ngx.var.sqlite_result`
+2. if you set the `ngx.var.sqlite_query` by nginx conf or lua script then you can get result via `ngx.var.sqlite_result`
 
 Sql result format
 =================
