@@ -249,7 +249,7 @@ ngx_http_sqlite_init_main_conf(ngx_conf_t *cf, void *conf)
     if (smcf->enable == NGX_CONF_UNSET) {
         smcf->enable = 0;
     }
-    if (!smcf->database.len) {
+    if (smcf->enable && !smcf->database.len) {
         ngx_log_error(NGX_LOG_ERR, cf->log, 0, "sqlite_database not configed");
         return NGX_CONF_ERROR;
     }
@@ -282,7 +282,7 @@ ngx_http_sqlite_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     smcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_sqlite_module);
 
-    ngx_conf_merge_value(conf->enable, prev->enable, 1);
+    ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_ptr_value(conf->filter_keys, prev->filter_keys, NULL);
     if (conf->enable) {
         smcf->enable = 1;
@@ -294,8 +294,8 @@ ngx_http_sqlite_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 static ngx_buf_t *
 ngx_http_sqlite_read_body(ngx_http_request_t *r)
 {
-    size_t        size;
-    ngx_int_t     len;
+    size_t        size = 0;
+    ngx_int_t     len = 0;
     ngx_buf_t    *body;
     ngx_chain_t  *cl;
 
